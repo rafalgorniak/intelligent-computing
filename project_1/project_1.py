@@ -4,8 +4,71 @@ import matplotlib.pyplot as plt
 from sklearn import cluster
 from sklearn.metrics import silhouette_score,adjusted_rand_score,homogeneity_score,completeness_score,v_measure_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.datasets import load_iris,load_wine,load_breast_cancer
 
 from warmUp.warmup import plot_voronoi_diagram,load
+
+def runScorePlot(data, y_true,min_eps,max_eps,gap):
+    X = StandardScaler().fit_transform(data)
+
+    eps_range = np.arange(min_eps, max_eps, gap)
+    clusters = []
+
+    adjusted_score = []
+    hom_score = []
+    comp_score = []
+    v_meas_1_score = []
+    v_meas_2_score = []
+    v_meas_3_score = []
+
+    best_case, worst_case = 0, 0
+    best_score, worst_score = 0, 1
+
+    for i, eps in enumerate(eps_range):
+        # Fit KMeans clustering algorithm
+        algorithm = cluster.DBSCAN(eps=eps, min_samples=1)
+        cluster_labels = algorithm.fit_predict(X)
+
+        y_pred = algorithm.labels_.astype(int)
+        num_unique_labels = len(np.unique(y_pred))
+        clusters.append(num_unique_labels)
+
+        adjusted_score.append(adjusted_rand_score(y_true, cluster_labels))
+        hom_score.append(homogeneity_score(y_true, cluster_labels))
+        comp_score.append(completeness_score(y_true, cluster_labels))
+        v_meas_1_score.append(v_measure_score(y_true, cluster_labels, beta=0.5))
+        v_meas_2_score.append(v_measure_score(y_true, cluster_labels, beta=1.0))
+        v_meas_3_score.append(v_measure_score(y_true, cluster_labels, beta=2.0))
+
+        score = np.mean([adjusted_score[i], hom_score[i], comp_score[i], v_meas_1_score[i]])
+
+        if score > best_score:
+            best_score = score
+            best_case = num_unique_labels
+        if score < worst_score:
+            worst_score = score
+            worst_case = num_unique_labels
+
+    plt.plot(eps_range, adjusted_score, marker='', label='Adjusted rand')
+    plt.plot(eps_range, hom_score, marker='', label='Homogeneity')
+    plt.plot(eps_range, comp_score, marker='', label='Completeness')
+    plt.plot(eps_range, v_meas_1_score, marker='', label='V measure (beta=0.5)')
+    plt.plot(eps_range, v_meas_2_score, marker='', label='V measure (beta=1.0)')
+    plt.plot(eps_range, v_meas_3_score, marker='', label='V measure (beta=2.0)')
+    plt.xlabel('Number of clusters')
+    plt.ylabel('Silhouette Score')
+    plt.title('Silhouette Score vs Number of Clusters')
+    plt.legend()
+    plt.grid(True)
+    clusters = np.array(clusters)
+
+    # Add labels indicating number of clusters near marker points
+    for i, eps in enumerate(eps_range):
+        plt.annotate(clusters[i], (eps, worst_score), textcoords="offset points",
+                     xytext=(5, -10), ha='center')
+
+    plt.show()
+
 
 def run_first_task():
     for a in range(6):
@@ -188,90 +251,60 @@ def run_fourth_task():
         path = f"./{int(a / 3) + 1}_{a % 3 + 1}.csv"
         X = load(path)[0]
         y_true = load(path)[1]
-        X = StandardScaler().fit_transform(X)
-
-        min_eps = 0.05
-        max_eps = 0.4
-        eps_range = np.arange(min_eps, max_eps, 0.02)
-        clusters = []
-
-        adjusted_score = []
-        hom_score = []
-        comp_score = []
-        v_meas_1_score = []
-        v_meas_2_score = []
-        v_meas_3_score = []
-
-        best_case, worst_case = 0, 0
-        best_score, worst_score = 0, 1
-
-        for i, eps in enumerate(eps_range):
-            # Fit KMeans clustering algorithm
-            algorithm = cluster.DBSCAN(eps=eps, min_samples=1)
-            cluster_labels = algorithm.fit_predict(X)
-
-            y_pred = algorithm.labels_.astype(int)
-            num_unique_labels = len(np.unique(y_pred))
-            clusters.append(num_unique_labels)
-
-            adjusted_score.append(adjusted_rand_score(y_true,cluster_labels))
-            hom_score.append(homogeneity_score(y_true,cluster_labels))
-            comp_score.append(completeness_score(y_true, cluster_labels))
-            v_meas_1_score.append(v_measure_score(y_true, cluster_labels, beta=0.5))
-            v_meas_2_score.append(v_measure_score(y_true, cluster_labels, beta=1.0))
-            v_meas_3_score.append(v_measure_score(y_true, cluster_labels, beta=2.0))
-
-            score = np.mean([adjusted_score[i],hom_score[i],comp_score[i],v_meas_1_score[i]])
-
-            if score > best_score:
-                best_score = score
-                best_case = num_unique_labels
-            if score < worst_score:
-                worst_score = score
-                worst_case = num_unique_labels
-
-        plt.plot(eps_range, adjusted_score, marker='', label='Adjusted rand')
-        plt.plot(eps_range, hom_score, marker='', label='Homogeneity')
-        plt.plot(eps_range, comp_score, marker='', label='Completeness')
-        plt.plot(eps_range, v_meas_1_score, marker='', label='V measure (beta=0.5)')
-        plt.plot(eps_range, v_meas_2_score, marker='', label='V measure (beta=1.0)')
-        plt.plot(eps_range, v_meas_3_score, marker='', label='V measure (beta=2.0)')
-        plt.xlabel('Number of clusters')
-        plt.ylabel('Silhouette Score')
-        plt.title('Silhouette Score vs Number of Clusters')
-        plt.legend()
-        plt.grid(True)
-        clusters = np.array(clusters)
-
-        # Add labels indicating number of clusters near marker points
-        for i, eps in enumerate(eps_range):
-            plt.annotate(clusters[i], (eps, worst_score), textcoords="offset points",
-                         xytext=(5, -10), ha='center')
-
-        plt.show()
-
-        algorithm = cluster.KMeans(n_clusters=best_case)
-        algorithm.fit(X)
-        y_pred = algorithm.labels_.astype(int)
-
-        plot_voronoi_diagram(X, y_true, y_pred)
-
-        algorithm = cluster.KMeans(n_clusters=worst_case)
-        algorithm.fit(X)
-        y_pred = algorithm.labels_.astype(int)
-
-        plot_voronoi_diagram(X, y_true, y_pred)
+        runScorePlot(X,y_true,0.3,1,0.1)
 
 
-def run_fifth_task():
-    pass
+#experiment on 6th page
+def run_sixth_task():
+    flowers = load_iris().data
+    flower_labels = load_iris().target
+    flowers = StandardScaler().fit_transform(flowers)
+
+    wine = load_wine().data
+    wine_labels = load_wine().target
+    wine = StandardScaler().fit_transform(wine)
+
+    breast = load_breast_cancer().data
+    breast_labels = load_breast_cancer().target
+    breast = StandardScaler().fit_transform(breast)
+
+    min_clusters = 2
+    max_clusters = 10
+    cluster_range = range(min_clusters, max_clusters+1)
+    silhouette_scores_flowers = []
+    silhouette_scores_wine = []
+    silhouette_scores_breast = []
+
+    for n_clusters in cluster_range:
+        # Fit KMeans clustering algorithm
+        cluster_labels_flowers = cluster.KMeans(n_clusters=n_clusters, random_state=0).fit_predict(flowers)
+        cluster_labels_wine = cluster.KMeans(n_clusters=n_clusters, random_state=0).fit_predict(wine)
+        cluster_labels_breast = cluster.KMeans(n_clusters=n_clusters, random_state=0).fit_predict(breast)
+
+        silhouette_scores_flowers.append(silhouette_score(flowers, cluster_labels_flowers))
+        silhouette_scores_wine.append(silhouette_score(wine, cluster_labels_wine))
+        silhouette_scores_breast.append(silhouette_score(breast, cluster_labels_breast))
+
+    plt.plot(cluster_range, silhouette_scores_flowers, marker='', label='flowers')
+    plt.plot(cluster_range, silhouette_scores_wine, marker='', label='wine')
+    plt.plot(cluster_range, silhouette_scores_breast, marker='', label='breast')
+    plt.xlabel('Number of clusters')
+    plt.ylabel('Silhouette Score')
+    plt.title('Silhouette Score vs Number of Clusters')
+    plt.grid(True)
+    plt.show()
+
+    runScorePlot(flowers,flower_labels,0.3,1,0.1)
+    runScorePlot(wine, wine_labels,1.5,2.5,0.1)
+    runScorePlot(breast, breast_labels,1.5,3,0.1)
 
 
 if __name__ == '__main__':
 
+    pass
     #run_first_task()
     #run_second_task()
     #run_third_task()
     #run_fourth_task()
-    run_fifth_task()
+    #run_sixth_task()
 
