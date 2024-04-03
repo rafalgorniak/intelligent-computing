@@ -6,7 +6,7 @@ from sklearn import cluster
 from sklearn.metrics import silhouette_score, adjusted_rand_score, homogeneity_score, completeness_score, \
     v_measure_score
 from sklearn.preprocessing import StandardScaler
-from warmup import plot_voronoi_diagram, load
+from warmUp.warmup import plot_voronoi_diagram,load
 
 
 def load_datasets() -> tuple:
@@ -18,7 +18,7 @@ def load_datasets() -> tuple:
 
     for first_index in dataset_first_indexes:
         for second_index in dataset_second_indexes:
-            temp_points, temp_labels = load(f"{first_index}_{second_index}.csv")
+            temp_points, temp_labels = load(f"project_1/{first_index}_{second_index}.csv")
             temp_points = StandardScaler().fit_transform(temp_points)
             points.append(temp_points)
             labels.append(temp_labels)
@@ -308,14 +308,12 @@ def run_fourth_experiment() -> None:
             points_data,
             labels_data,
             best_cluster_labels,
-            f"Dataset {index + 1}. Voronoi Diagram for eps={best_eps} (Best Scenario)"
         )
 
         plot_voronoi_diagram(
             points_data,
             labels_data,
             worst_cluster_labels,
-            f"Dataset {index + 1}. Voronoi Diagram for eps={worst_eps} (Worst Scenario)"
         )
 
         plt.plot(eps_range, adjusted_rand_score_list, marker='', label='adjusted rand')
@@ -352,4 +350,4 @@ if __name__ == "__main__":
     #run_first_experiment()
     #run_second_experiment()
     #run_third_experiment()
-    #run_fourth_experiment()
+    run_fourth_experiment()

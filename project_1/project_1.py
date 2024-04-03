@@ -2,13 +2,39 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from sklearn import cluster
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from sklearn.metrics import silhouette_score,adjusted_rand_score,homogeneity_score,completeness_score,v_measure_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.datasets import load_iris,load_wine,load_breast_cancer
 
 from warmUp.warmup import plot_voronoi_diagram,load
 
-def runScorePlot(data, y_true,min_eps,max_eps,gap):
+
+def runPcaTsnePlot(data, data_labels, title_1, title_2):
+    pca = PCA(n_components=2)
+    tsne = TSNE(n_components=2)
+
+    data_pca = pca.fit_transform(data)
+    data_tsne = tsne.fit_transform(data)
+
+    plt.figure(figsize=(12, 4))
+    plt.subplot(1, 2, 1)
+    plt.scatter(data_pca[:, 0], data_pca[:, 1], c=data_labels, cmap='viridis', edgecolor='k')
+    plt.title(title_1)
+    plt.xlabel('X')
+    plt.ylabel('Y')
+
+    plt.subplot(1, 2, 2)
+    plt.scatter(data_tsne[:, 0], data_tsne[:, 1], c=data_labels, cmap='viridis', edgecolor='k')
+    plt.title(title_2)
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.tight_layout()
+    plt.show()
+
+
+def runScorePlot(data, y_true,min_eps,max_eps,gap,title):
     X = StandardScaler().fit_transform(data)
 
     eps_range = np.arange(min_eps, max_eps, gap)
@@ -21,6 +47,7 @@ def runScorePlot(data, y_true,min_eps,max_eps,gap):
     v_meas_2_score = []
     v_meas_3_score = []
 
+    worst_label, best_label = [], []
     best_case, worst_case = 0, 0
     best_score, worst_score = 0, 1
 
@@ -44,20 +71,20 @@ def runScorePlot(data, y_true,min_eps,max_eps,gap):
 
         if score > best_score:
             best_score = score
-            best_case = num_unique_labels
+            best_label = cluster_labels
         if score < worst_score:
             worst_score = score
-            worst_case = num_unique_labels
+            worst_label = cluster_labels
 
-    plt.plot(eps_range, adjusted_score, marker='', label='Adjusted rand')
-    plt.plot(eps_range, hom_score, marker='', label='Homogeneity')
-    plt.plot(eps_range, comp_score, marker='', label='Completeness')
-    plt.plot(eps_range, v_meas_1_score, marker='', label='V measure (beta=0.5)')
-    plt.plot(eps_range, v_meas_2_score, marker='', label='V measure (beta=1.0)')
-    plt.plot(eps_range, v_meas_3_score, marker='', label='V measure (beta=2.0)')
+    plt.plot(eps_range, adjusted_score, marker='', label='adjusted rand')
+    plt.plot(eps_range, hom_score, marker='', label='homogeneity')
+    plt.plot(eps_range, comp_score, marker='', label='completeness')
+    plt.plot(eps_range, v_meas_1_score, marker='', label='V-measure (beta=0.5)')
+    plt.plot(eps_range, v_meas_2_score, marker='', label='V-measure (beta=1.0)')
+    plt.plot(eps_range, v_meas_3_score, marker='', label='V-measure (beta=2.0)')
     plt.xlabel('Number of clusters')
     plt.ylabel('Silhouette Score')
-    plt.title('Silhouette Score vs Number of Clusters')
+    plt.title(title)
     plt.legend()
     plt.grid(True)
     clusters = np.array(clusters)
@@ -69,10 +96,12 @@ def runScorePlot(data, y_true,min_eps,max_eps,gap):
 
     plt.show()
 
+    return worst_label, best_label
+
 
 def run_first_task():
     for a in range(6):
-        path = f"./{int(a/3)+1}_{a%3+1}.csv"
+        path = f"project_1/{int(a/3)+1}_{a%3+1}.csv"
         X = load(path)[0]
         y_true = load(path)[1]
         X = StandardScaler().fit_transform(X)
@@ -90,11 +119,15 @@ def run_first_task():
             silhouette_avg = silhouette_score(X, cluster_labels)
             silhouette_scores.append(silhouette_avg)
 
-        plt.plot(cluster_range, silhouette_scores, marker='o')
+        plt.plot(cluster_range, silhouette_scores, marker='')
         plt.xlabel('Number of clusters')
         plt.ylabel('Silhouette Score')
+        plt.ylim(0.0, 1.0)
         plt.title('Silhouette Score vs Number of Clusters')
-        plt.grid(True)
+
+        for i, n_cluster in enumerate(cluster_range):
+            plt.axvline(x=n_cluster, color='gray', linestyle='--', alpha=0.3)
+
         plt.show()
 
         best_case = silhouette_scores.index(max(silhouette_scores))
@@ -115,9 +148,9 @@ def run_first_task():
 
 
 def run_second_task():
-    for a in range(2):
+    for a in range(6):
 
-        path = f"./{int(a / 3) + 1}_{a % 3 + 1}.csv"
+        path = f"project_1/{int(a / 3) + 1}_{a % 3 + 1}.csv"
         X = load(path)[0]
         y_true = load(path)[1]
         X = StandardScaler().fit_transform(X)
@@ -127,6 +160,7 @@ def run_second_task():
         eps_range = np.arange(min_eps, max_eps,0.05)
         silhouette_scores = []
         clusters = []
+        best_labels,worst_labels= [], []
         best_case, worst_case = 0, 0
         best_score,worst_score = 0, 1
 
@@ -145,16 +179,21 @@ def run_second_task():
 
             if silhouette_avg > best_score:
                 best_score = silhouette_avg
-                best_case = num_unique_labels
+                best_labels = cluster_labels
+
             if silhouette_avg < worst_score:
                 worst_score=silhouette_avg
-                worst_case = num_unique_labels
+                worst_labels = cluster_labels
 
         plt.plot(eps_range, silhouette_scores, marker='')
         plt.xlabel('eps')
         plt.ylabel('Silhouette Score')
         plt.title('Silhouette Score vs Number of Clusters')
-        plt.grid(True)
+        plt.ylim(0.0, 1.0)
+        plt.title('Silhouette Score vs Number of Clusters')
+
+        for i, n_cluster in enumerate(eps_range):
+            plt.axvline(x=n_cluster, color='gray', linestyle='--', alpha=0.3)
         clusters=np.array(clusters)
 
         # Add labels indicating number of clusters near marker points
@@ -164,20 +203,14 @@ def run_second_task():
 
         plt.show()
 
-        algorithm = cluster.KMeans(n_clusters=worst_case)
-        algorithm.fit(X)
-        y_pred = algorithm.labels_.astype(int)
-        plot_voronoi_diagram(X, y_true, y_pred)
+        plot_voronoi_diagram(X, y_true, worst_labels)
 
-        algorithm = cluster.KMeans(n_clusters=best_case)
-        algorithm.fit(X)
-        y_pred = algorithm.labels_.astype(int)
-        plot_voronoi_diagram(X, y_true, y_pred)
+        plot_voronoi_diagram(X, y_true, best_labels)
 
 
 def run_third_task():
     for a in range(6):
-        path = f"./{int(a / 3) + 1}_{a % 3 + 1}.csv"
+        path = f"project_1/{int(a / 3) + 1}_{a % 3 + 1}.csv"
         X = load(path)[0]
         y_true = load(path)[1]
         X = StandardScaler().fit_transform(X)
@@ -230,7 +263,11 @@ def run_third_task():
         plt.ylabel('Silhouette Score')
         plt.title('Silhouette Score vs Number of Clusters')
         plt.legend()
-        plt.grid(True)
+        plt.ylim(0.0, 1.0)
+
+        for i, n_cluster in enumerate(cluster_range):
+            plt.axvline(x=n_cluster, color='gray', linestyle='--', alpha=0.3)
+
         plt.show()
 
         algorithm = cluster.KMeans(n_clusters=best_case)
@@ -248,13 +285,14 @@ def run_third_task():
 
 def run_fourth_task():
     for a in range(6):
-        path = f"./{int(a / 3) + 1}_{a % 3 + 1}.csv"
+        path = f"project_1/{int(a / 3) + 1}_{a % 3 + 1}.csv"
         X = load(path)[0]
         y_true = load(path)[1]
-        runScorePlot(X,y_true,0.3,1,0.1)
+        worst, best = runScorePlot(X,y_true,0.05,0.5,0.05,"")
+        plot_voronoi_diagram(X, y_true, worst)
+        plot_voronoi_diagram(X, y_true, best)
 
 
-#experiment on 6th page
 def run_sixth_task():
     flowers = load_iris().data
     flower_labels = load_iris().target
@@ -285,18 +323,23 @@ def run_sixth_task():
         silhouette_scores_wine.append(silhouette_score(wine, cluster_labels_wine))
         silhouette_scores_breast.append(silhouette_score(breast, cluster_labels_breast))
 
-    plt.plot(cluster_range, silhouette_scores_flowers, marker='', label='flowers')
+    plt.plot(cluster_range, silhouette_scores_flowers, marker='', label='iris')
     plt.plot(cluster_range, silhouette_scores_wine, marker='', label='wine')
-    plt.plot(cluster_range, silhouette_scores_breast, marker='', label='breast')
-    plt.xlabel('Number of clusters')
-    plt.ylabel('Silhouette Score')
-    plt.title('Silhouette Score vs Number of Clusters')
+    plt.plot(cluster_range, silhouette_scores_breast, marker='', label='breast cancer')
+    plt.xlabel('n_clusters')
+    plt.ylabel('silhouette score')
+    plt.title('Silhouette scores of different datasets')
     plt.grid(True)
+    plt.legend()
     plt.show()
 
-    runScorePlot(flowers,flower_labels,0.3,1,0.1)
-    runScorePlot(wine, wine_labels,1.5,2.5,0.1)
-    runScorePlot(breast, breast_labels,1.5,3,0.1)
+    runScorePlot(flowers,flower_labels,0.3,1,0.1, "Scores of iris dataset")
+    runScorePlot(wine, wine_labels,1.5,2.5,0.1, "Scores score of wine dataset")
+    runScorePlot(breast, breast_labels,1.5,3,0.1, "Scores of breast cancer dataset")
+
+    runPcaTsnePlot(flowers, flower_labels, 'PCA - Iris dataset', 't-SNE - Iris dataset')
+    runPcaTsnePlot(wine, wine_labels, 'PCA - Wine dataset', 't-SNE - Wine dataset')
+    runPcaTsnePlot(breast, breast_labels, 'PCA - Breast cancer dataset', 't-SNE - Breast cancer dataset')
 
 
 if __name__ == '__main__':
