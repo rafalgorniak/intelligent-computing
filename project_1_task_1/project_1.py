@@ -1,37 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
 from sklearn import cluster
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
+
 from sklearn.metrics import silhouette_score,adjusted_rand_score,homogeneity_score,completeness_score,v_measure_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.datasets import load_iris,load_wine,load_breast_cancer
 
 from warmUp.warmup import plot_voronoi_diagram,load
 
-
-def runPcaTsnePlot(data, data_labels, title_1, title_2):
-    pca = PCA(n_components=2)
-    tsne = TSNE(n_components=2)
-
-    data_pca = pca.fit_transform(data)
-    data_tsne = tsne.fit_transform(data)
-
-    plt.figure(figsize=(12, 4))
-    plt.subplot(1, 2, 1)
-    plt.scatter(data_pca[:, 0], data_pca[:, 1], c=data_labels, cmap='viridis', edgecolor='k')
-    plt.title(title_1)
-    plt.xlabel('X')
-    plt.ylabel('Y')
-
-    plt.subplot(1, 2, 2)
-    plt.scatter(data_tsne[:, 0], data_tsne[:, 1], c=data_labels, cmap='viridis', edgecolor='k')
-    plt.title(title_2)
-    plt.xlabel('X')
-    plt.ylabel('Y')
-    plt.tight_layout()
-    plt.show()
 
 
 def runScorePlot(data, y_true,min_eps,max_eps,gap,title):
@@ -97,6 +73,14 @@ def runScorePlot(data, y_true,min_eps,max_eps,gap,title):
     plt.show()
 
     return worst_label, best_label
+
+def runScatterPlot(data, data_labels, title):
+    plt.figure(figsize=(6, 4))
+    plt.scatter(data[:, 0], data[:, 1], c=data_labels, cmap='viridis', edgecolor='k')
+    plt.title(title)
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.show()
 
 
 def run_first_task():
@@ -337,9 +321,9 @@ def run_sixth_task():
     runScorePlot(wine, wine_labels,1.5,2.5,0.1, "Scores score of wine dataset")
     runScorePlot(breast, breast_labels,1.5,3,0.1, "Scores of breast cancer dataset")
 
-    runPcaTsnePlot(flowers, flower_labels, 'PCA - Iris dataset', 't-SNE - Iris dataset')
-    runPcaTsnePlot(wine, wine_labels, 'PCA - Wine dataset', 't-SNE - Wine dataset')
-    runPcaTsnePlot(breast, breast_labels, 'PCA - Breast cancer dataset', 't-SNE - Breast cancer dataset')
+    runScatterPlot(flowers, flower_labels, 'Scatter plot - Iris dataset')
+    runScatterPlot(wine, wine_labels, 'Scatter plot - Wine dataset')
+    runScatterPlot(breast, breast_labels, 'Scatter plot - Breast dataset')
 
 
 if __name__ == '__main__':
