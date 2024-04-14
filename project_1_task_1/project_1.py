@@ -85,7 +85,7 @@ def runScatterPlot(data, data_labels, title):
 
 def run_first_task():
     for a in range(6):
-        path = f"project_1/{int(a/3)+1}_{a%3+1}.csv"
+        path = f"project_1_task_1/{int(a/3)+1}_{a%3+1}.csv"
         X = load(path)[0]
         y_true = load(path)[1]
         X = StandardScaler().fit_transform(X)
@@ -134,7 +134,7 @@ def run_first_task():
 def run_second_task():
     for a in range(6):
 
-        path = f"project_1/{int(a / 3) + 1}_{a % 3 + 1}.csv"
+        path = f"project_1_task_1/{int(a/3)+1}_{a%3+1}.csv"
         X = load(path)[0]
         y_true = load(path)[1]
         X = StandardScaler().fit_transform(X)
@@ -194,7 +194,7 @@ def run_second_task():
 
 def run_third_task():
     for a in range(6):
-        path = f"project_1/{int(a / 3) + 1}_{a % 3 + 1}.csv"
+        path = f"project_1_task_1/{int(a/3)+1}_{a%3+1}.csv"
         X = load(path)[0]
         y_true = load(path)[1]
         X = StandardScaler().fit_transform(X)
@@ -269,7 +269,7 @@ def run_third_task():
 
 def run_fourth_task():
     for a in range(6):
-        path = f"project_1/{int(a / 3) + 1}_{a % 3 + 1}.csv"
+        path = f"project_1_task_1/{int(a/3)+1}_{a%3+1}.csv"
         X = load(path)[0]
         y_true = load(path)[1]
         worst, best = runScorePlot(X,y_true,0.05,0.5,0.05,"")
