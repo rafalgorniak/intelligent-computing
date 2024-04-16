@@ -90,8 +90,8 @@ def plot_decision_boundary(X, y_true, func):
     """
 
     # Generate a grid of points covering the range of data points
-    x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
-    y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+    x_min, x_max = X[:, 0].min() - 0.2, X[:, 0].max() + 0.2
+    y_min, y_max = X[:, 1].min() - 0.2, X[:, 1].max() + 0.2
     xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.1),
                          np.arange(y_min, y_max, 0.1))
 
