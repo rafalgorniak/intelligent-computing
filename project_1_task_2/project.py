@@ -1,15 +1,16 @@
+import math
+
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn import cluster
+import seaborn as sns
 
-from sklearn.metrics import silhouette_score, adjusted_rand_score, homogeneity_score, completeness_score, \
-    v_measure_score, precision_score
+
+from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
-from sklearn.pipeline import make_pipeline
+
 from sklearn.preprocessing import StandardScaler
-from sklearn.datasets import load_iris,load_wine,load_breast_cancer
 from sklearn.svm import SVC
 
 from warmUp.warmup import plot_voronoi_diagram,load
@@ -42,6 +43,29 @@ def plot_decision_boundary(X, y_true, func, title):
 
     plt.show()
 
+def plot_confusion_matrix(true_labels, predicted_labels, title):
+    cm = confusion_matrix(true_labels, predicted_labels)
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", cbar=False)
+    plt.xlabel('Predicted labels')
+    plt.ylabel('True labels')
+    plt.title(title)
+    plt.show()
+
+def scorePlot(range, points1, points2, x_label):
+    plt.plot(range, points1, marker='', label='train accuracy')
+    plt.plot(range, points2, marker='', label='test accuracy')
+
+    plt.xlabel(x_label)
+    plt.ylabel("Accuracy")
+    plt.ylim(0.0, 1.1)
+    plt.legend(loc='lower right')
+
+    for i, n_cluster in enumerate(range):
+        plt.axvline(x=n_cluster, color='gray', linestyle='--', alpha=0.3)
+
+    plt.show()
+
 def getSets():
     data = []
     labels = []
@@ -62,7 +86,8 @@ def pageOne():
 
     data, labels = getSets()
     svm_kernels = ['linear', 'rbf']
-    svm_c_values = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4, 4.0, 4.5, 5.0]
+    svm_c_values = [(10**i) for i in range(-2, 7)]
+
     for index, (points_data, labels_data) in enumerate(zip(data, labels)):
 
         # SVC section
@@ -75,14 +100,14 @@ def pageOne():
                 svc.fit(points_data, labels_data)
                 actual_score = svc.score( points_data,labels_data )
                 if( actual_score > score ):
-                    print("Dataset:", index, ", kernel:", kernel, ", C:", C, ", actual score:", actual_score, "score:",
+                    print("Dataset:", index, ", kernel:", kernel, ", log(C):", math.log(C), ", actual score:", actual_score, "score:",
                           score)
                     score = actual_score
                     kernel_best = kernel
                     c_value = C
         svc = SVC(gamma='auto', kernel=kernel_best, C=c_value)
         svc.fit(points_data, labels_data)
-        plot_decision_boundary(points_data, labels_data, svc.predict,f'SVM Dec. Bound. for set {index+1}, kernel = {kernel_best}, C = {c_value}, acc. = {"{:.1f}".format(score)}')
+        plot_decision_boundary(points_data, labels_data, svc.predict,f'SVM Dec. Bound. for set {index+1}, kernel = {kernel_best}, log(C) = {math.log10(c_value)}, acc. = {"{:.1f}".format(score)}')
 
         # MLP section
         mlp_activations = ['relu', 'identity']
@@ -111,22 +136,234 @@ def pageTwo():
     labels = labels[1:]
 
     for index, (points_data, labels_data) in enumerate(zip(data, labels)):
-        X_train, X_test, labels_train, labels_test = train_test_split(points_data, labels_data, test_size = 0.8, random_state = 42)
+        X_train, X_test, labels_train, labels_test = train_test_split(points_data, labels_data, test_size=0.2,
+                                                                      random_state=42)
 
-        # K-NN section
-
-        neigh = KNeighborsClassifier(n_neighbors=8)
-        neigh.fit(X_train, labels_train)
-        predictionsTrain = neigh.predict(X_train)
-        predictionsTest = neigh.predict(X_test)
-        print(precision_score(labels_train, predictionsTrain))
-        print(precision_score(labels_test, predictionsTest))
-
+        train_score = []
+        test_score = []
+        best_n_value_train = 0
+        best_n_value_test = 0
+        best_accuracy_train = 0
+        best_accuracy_test = 0
 
         # SVM section
-        # MLP section
+        for neighbour in range(1, 15):
+            neigh = KNeighborsClassifier(n_neighbors=neighbour)
+            neigh.fit(X_train, labels_train)
+
+            predictionsTrain = neigh.predict(X_train)
+            train_accuracy = accuracy_score(labels_train, predictionsTrain)
+            train_score.append(train_accuracy)
+
+            if (train_accuracy > best_accuracy_train):
+                best_accuracy_train = train_accuracy
+                best_n_value_train = neighbour
+
+            predictionsTest = neigh.predict(X_test)
+            test_accuracy = accuracy_score(labels_test, predictionsTest)
+            test_score.append(test_accuracy)
+
+            if (test_accuracy > best_accuracy_test):
+                best_accuracy_test = test_accuracy
+                best_n_value_test = neighbour
+
+        scorePlot(range(1, 15), train_score, test_score,"n_neighbours")
+
+        # Decision boundary for train set / test set
+
+        neigh = KNeighborsClassifier(n_neighbors=1)
+        neigh.fit(X_train, labels_train)
+        plot_decision_boundary(X_train, labels_train, neigh.predict,
+                               f'K-NN Dec. Bound. for train set {index + 1}, n_neighbors = {1}')
+        plot_confusion_matrix(labels_train, neigh.predict(X_train), f"Confusion matrix for train set {index + 1}, n_neighbors = {1}' ")
+        plot_decision_boundary(X_test, labels_test, neigh.predict,
+                               f'K-NN Dec. Bound. for test set {index + 1}, n_neighbors = {1}')
+        plot_confusion_matrix(labels_test, neigh.predict(X_test),
+                              f"K-NN confusion matrix for train set {index + 1}, n_neighbors = {1}' ")
+
+        neigh = KNeighborsClassifier(n_neighbors=15)
+        neigh.fit(X_train, labels_train)
+        plot_decision_boundary(X_train, labels_train, neigh.predict,
+                               f'K-NN Dec. Bound. for train set {index + 1}, n_neighbors = {15}')
+        plot_confusion_matrix(labels_train, neigh.predict(X_train),
+                              f"K-NN confusion matrix for train set {index + 1}, n_neighbors = {15}' ")
+        plot_decision_boundary(X_test, labels_test, neigh.predict,
+                               f'K-NN Dec. Bound. for train set {index + 1}, n_neighbors = {15}')
+        plot_confusion_matrix(labels_test, neigh.predict(X_test),
+                              f"K-NN confusion matrix for train set {index + 1}, n_neighbors = {15}' ")
+
+        neigh = KNeighborsClassifier(n_neighbors=best_n_value_train)
+        neigh.fit(X_train, labels_train)
+        plot_decision_boundary(X_train, labels_train, neigh.predict,
+                               f'K-NN Dec. Bound. for train set {index + 1}, n_neighbors = {best_n_value_train}, acc. = {"{:.1f}".format(best_accuracy_train)}')
+        plot_confusion_matrix(labels_train, neigh.predict(X_train),
+                              f"K-NN confusion matrix for train set {index + 1}, n_neighbors = {best_n_value_train}")
+        neigh = KNeighborsClassifier(n_neighbors=best_n_value_test)
+        neigh.fit(X_train, labels_train)
+        plot_decision_boundary(X_test, labels_test, neigh.predict,
+                               f'K-NN Dec. Bound. for train set {index + 1}, n_neighbors = {best_n_value_test}, acc. = {"{:.1f}".format(best_accuracy_test)}')
+        plot_confusion_matrix(labels_test, neigh.predict(X_test),
+                              f"K-NN confusion matrix for train set {index + 1}, n_neighbors = {best_n_value_test}")
+
+def pageThree():
+    data, labels = getSets()
+    data = data[1:]
+    labels = labels[1:]
+
+    for index, (points_data, labels_data) in enumerate(zip(data, labels)):
+        X_train, X_test, labels_train, labels_test = train_test_split(points_data, labels_data, test_size=0.2,
+                                                                      random_state=42)
+
+        svm_c_values = [(10**i) for i in np.arange(-2.0, 6.0, 0.25)]
+        train_score = []
+        test_score = []
+        best_c_value_train = 0
+        best_c_value_test = 0
+        best_accuracy_train = 0
+        best_accuracy_test = 0
+
+        # SVM section
+        for C in svm_c_values:
+            svc = SVC(gamma='auto', kernel='rbf', C=C)
+            svc.fit(X_train, labels_train)
+
+            predictionsTrain = svc.predict(X_train)
+            train_accuracy = accuracy_score(labels_train, predictionsTrain)
+            train_score.append(train_accuracy)
+
+            if (train_accuracy >= best_accuracy_train):
+                best_accuracy_train = train_accuracy
+                best_c_value_train = C
+
+            predictionsTest = svc.predict(X_test)
+            test_accuracy = accuracy_score(labels_test, predictionsTest)
+            test_score.append(test_accuracy)
+
+            if (test_accuracy >= best_accuracy_test):
+                best_accuracy_test = test_accuracy
+                best_c_value_test = C
+
+        log_svm_c_values = [math.log10(c) for c in svm_c_values]
+        scorePlot(log_svm_c_values, train_score, test_score,"log(C)")
+
+        # Decision boundary for train set / test set
+
+        svc = SVC(gamma='auto', kernel='rbf', C=0.01)
+        svc.fit(X_train, labels_train)
+        plot_decision_boundary(X_train, labels_train, svc.predict,
+                               f'SVM Dec. Bound. for train set {index + 1}, log(C) = {-2}')
+        plot_confusion_matrix(labels_train, svc.predict(X_train),
+                              f"SVM confusion matrix for train set {index + 1}, log(C) = {-2} ")
+        plot_decision_boundary(X_test, labels_test, svc.predict,
+                               f'SVM Dec. Bound. for test set {index + 1}, log(C) = {-2}')
+        plot_confusion_matrix(labels_test, svc.predict(X_test),
+                              f"SVM confusion matrix for train set {index + 1}, log(C) = {-2}")
+
+        svc = SVC(gamma='auto', kernel='rbf', C=1000000)
+        svc.fit(X_train, labels_train)
+        plot_decision_boundary(X_train, labels_train, svc.predict,
+                               f'SVM Dec. Bound. for train set {index + 1}, log(C) = {6}')
+        plot_confusion_matrix(labels_train, svc.predict(X_train),
+                              f"SVM confusion matrix for train set {index + 1}, log(C) = {6} ")
+        plot_decision_boundary(X_test, labels_test, svc.predict,
+                               f'SVM Dec. Bound. for train set {index + 1}, log(C) = {6}')
+        plot_confusion_matrix(labels_test, svc.predict(X_test),
+                              f"SVM confusion matrix for train set {index + 1}, log(C) = {6} ")
+
+        svc = SVC(gamma='auto', kernel='rbf', C=best_c_value_train)
+        svc.fit(X_train, labels_train)
+        plot_decision_boundary(X_train, labels_train, svc.predict,
+                               f'SVM Dec. Bound. for train set {index + 1}, log(C) = {math.log10(best_c_value_train)}, acc. = {"{:.1f}".format(best_accuracy_train)}')
+        plot_confusion_matrix(labels_train, svc.predict(X_train),
+                              f"SVM confusion matrix for train set {index + 1}, log(C) = {math.log10(best_c_value_train)}")
+        svc = SVC(gamma='auto', kernel='rbf', C=best_c_value_test)
+        svc.fit(X_train, labels_train)
+        plot_decision_boundary(X_test, labels_test, svc.predict,
+                               f'SVM Dec. Bound. for train set {index + 1}, log(C) = {math.log10(best_c_value_test)}, acc. = {"{:.1f}".format(best_accuracy_test)}')
+        plot_confusion_matrix(labels_test, svc.predict(X_test),
+                              f"SVM confusion matrix for train set {index + 1}, log(C) = {math.log10(best_c_value_test)}")
+
+def pageFour():
+    data, labels = getSets()
+    data = data[1:]
+    labels = labels[1:]
+
+    for index, (points_data, labels_data) in enumerate(zip(data, labels)):
+        X_train, X_test, labels_train, labels_test = train_test_split(points_data, labels_data, test_size=0.2,
+                                                                      random_state=42)
+
+        svm_c_values = [(10 ** i) for i in np.arange(-2.0, 6.0, 0.25)]
+        train_score = []
+        test_score = []
+        best_c_value_train = 0
+        best_c_value_test = 0
+        best_accuracy_train = 0
+        best_accuracy_test = 0
+
+        # SVM section
+        for C in svm_c_values:
+            svc = SVC(gamma='auto', kernel='rbf', C=C)
+            svc.fit(X_train, labels_train)
+
+            predictionsTrain = svc.predict(X_train)
+            train_accuracy = accuracy_score(labels_train, predictionsTrain)
+            train_score.append(train_accuracy)
+
+            if (train_accuracy >= best_accuracy_train):
+                best_accuracy_train = train_accuracy
+                best_c_value_train = C
+
+            predictionsTest = svc.predict(X_test)
+            test_accuracy = accuracy_score(labels_test, predictionsTest)
+            test_score.append(test_accuracy)
+
+            if (test_accuracy >= best_accuracy_test):
+                best_accuracy_test = test_accuracy
+                best_c_value_test = C
+
+        log_svm_c_values = [math.log10(c) for c in svm_c_values]
+        scorePlot(log_svm_c_values, train_score, test_score, "log(C)")
+
+        # Decision boundary for train set / test set
+
+        svc = SVC(gamma='auto', kernel='rbf', C=0.01)
+        svc.fit(X_train, labels_train)
+        plot_decision_boundary(X_train, labels_train, svc.predict,
+                               f'SVM Dec. Bound. for train set {index + 1}, log(C) = {-2}')
+        plot_confusion_matrix(labels_train, svc.predict(X_train),
+                              f"SVM confusion matrix for train set {index + 1}, log(C) = {-2} ")
+        plot_decision_boundary(X_test, labels_test, svc.predict,
+                               f'SVM Dec. Bound. for test set {index + 1}, log(C) = {-2}')
+        plot_confusion_matrix(labels_test, svc.predict(X_test),
+                              f"SVM confusion matrix for train set {index + 1}, log(C) = {-2}")
+
+        svc = SVC(gamma='auto', kernel='rbf', C=1000000)
+        svc.fit(X_train, labels_train)
+        plot_decision_boundary(X_train, labels_train, svc.predict,
+                               f'SVM Dec. Bound. for train set {index + 1}, log(C) = {6}')
+        plot_confusion_matrix(labels_train, svc.predict(X_train),
+                              f"SVM confusion matrix for train set {index + 1}, log(C) = {6} ")
+        plot_decision_boundary(X_test, labels_test, svc.predict,
+                               f'SVM Dec. Bound. for train set {index + 1}, log(C) = {6}')
+        plot_confusion_matrix(labels_test, svc.predict(X_test),
+                              f"SVM confusion matrix for train set {index + 1}, log(C) = {6} ")
+
+        svc = SVC(gamma='auto', kernel='rbf', C=best_c_value_train)
+        svc.fit(X_train, labels_train)
+        plot_decision_boundary(X_train, labels_train, svc.predict,
+                               f'SVM Dec. Bound. for train set {index + 1}, log(C) = {math.log10(best_c_value_train)}, acc. = {"{:.1f}".format(best_accuracy_train)}')
+        plot_confusion_matrix(labels_train, svc.predict(X_train),
+                              f"SVM confusion matrix for train set {index + 1}, log(C) = {math.log10(best_c_value_train)}")
+        svc = SVC(gamma='auto', kernel='rbf', C=best_c_value_test)
+        svc.fit(X_train, labels_train)
+        plot_decision_boundary(X_test, labels_test, svc.predict,
+                               f'SVM Dec. Bound. for train set {index + 1}, log(C) = {math.log10(best_c_value_test)}, acc. = {"{:.1f}".format(best_accuracy_test)}')
+        plot_confusion_matrix(labels_test, svc.predict(X_test),
+                              f"SVM confusion matrix for train set {index + 1}, log(C) = {math.log10(best_c_value_test)}")
 
 if __name__ == '__main__':
 
     #pageOne()
-    pageTwo()
+    #pageTwo()
+    #pageThree()
+    pageFour()
