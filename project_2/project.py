@@ -2,6 +2,30 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, transforms
+import tensorflow as tf
+import numpy as np
+
+'''
+# Load MNIST dataset
+mnist = tf.keras.datasets.mnist
+(train_images, _), (_, _) = mnist.load_data()
+
+# Normalize pixel values
+train_images = train_images / 255.0
+
+# Flatten images and count white and black pixels
+threshold = 0.5
+num_white_pixels = np.sum(train_images > threshold, axis=(1, 2))
+num_black_pixels = np.sum(train_images <= threshold, axis=(1, 2))
+
+# Create 2-element vectors
+vectors = np.column_stack((num_white_pixels, num_black_pixels))
+
+# Print number of black and white pixels for the first 10 vectors
+for i in range(10):
+    print("Vector", i+1, "- Number of White Pixels:", vectors[i][0], "- Number of Black Pixels:", vectors[i][1])
+
+'''
 
 class customMLP(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
@@ -54,8 +78,8 @@ if __name__ == "__main__":
     train_dataset = datasets.MNIST(root='./data', train=True, transform=transform, download=True)
     test_dataset = datasets.MNIST(root='./data', train=False, transform=transform)
 
-    train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=64, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=50, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=50, shuffle=False)
 
     # Definicja modelu
     input_size = 28*28
