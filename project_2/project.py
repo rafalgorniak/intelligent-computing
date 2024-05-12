@@ -91,14 +91,9 @@ from torchvision import datasets, transforms
 
 # Define transformation to convert image to 2-element vector
 # Define transformation to convert image to 2-element vector
-# Define transformation to convert image to 2-element vector
-# Define transformation to convert image to 2-element vector
 def transform_to_contour_avg(image):
     # Convert torch tensor to numpy array
     image_np = image.numpy()
-
-    # Convert image to binary format (bright pixels: 1, black pixels: 0)
-    binary_image = (image_np > 0).astype(int)
 
     # Define kernel for checking neighbors
     kernel = torch.tensor([[0, 1, 0],
@@ -106,7 +101,7 @@ def transform_to_contour_avg(image):
                            [0, 1, 0]])
 
     # Get dimensions of the image
-    rows, cols = binary_image.shape[:2]
+    rows, cols = image_np.shape[:2]
 
     # Initialize contour length and sum of pixel values
     contour_length = 0
@@ -116,21 +111,14 @@ def transform_to_contour_avg(image):
     for i in range(rows):
         for j in range(cols):
             # Check if current pixel is bright (non-black)
-            if binary_image[i, j] == 1:
-                is_contour = False
+            if image_np[i, j] > 0:
                 # Check neighbors
                 for di in range(-1, 2):
                     for dj in range(-1, 2):
-                        ni, nj = i + di, j + dj
                         # Check if neighbor is within bounds and is black
-                        if 0 <= ni < rows and 0 <= nj < cols and kernel[di + 1, dj + 1] == 0 and binary_image[ni, nj] == 0:
-                            is_contour = True
-                            break  # Exit inner loop if a black neighbor is found
-                    if is_contour:
-                        break  # Exit outer loop if a black neighbor is found
-                if is_contour:
-                    contour_length += 1
-
+                        ni, nj = i + di, j + dj
+                        if 0 <= ni < rows and 0 <= nj < cols and kernel[di + 1, dj + 1] == 0 and image_np[ni, nj] == 0:
+                            contour_length += 1
                 # Add pixel value to sum
                 sum_pixel_values += image_np[i, j]
 
