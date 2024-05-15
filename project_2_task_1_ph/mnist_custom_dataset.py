@@ -8,11 +8,12 @@ from extraction_type import ExtractionType
 
 
 class MNISTCustomDataset(Dataset):
-    def __init__(self, root: str, train: bool, feature_extraction: str, lda=None, limit: int = None):
-        self.mnist_dataset = datasets.MNIST(root=root, train=train, transform=transforms.ToTensor(), download=True)
+    def __init__(self, train: bool, feature_extraction: str, pca=None, lda=None, limit: int = None):
+        self.mnist_dataset = datasets.MNIST(root='./data', train=train, transform=transforms.ToTensor(), download=True)
         if limit:
             self.mnist_dataset = Subset(self.mnist_dataset, range(limit))
         self.feature_extraction = feature_extraction
+        self.pca = pca
         self.lda = lda
 
     def __len__(self):
@@ -26,12 +27,13 @@ class MNISTCustomDataset(Dataset):
             img = self.extract_hog(img)
         elif self.feature_extraction == ExtractionType.LDA and self.lda is not None:
             img = self.lda.transform(img.numpy().reshape(1, -1)).flatten()
+        elif self.feature_extraction == ExtractionType.PCA and self.pca is not None:  # Check for PCA
+            img = self.pca.transform(img.numpy().reshape(1, -1)).flatten()
 
         return torch.tensor(img, dtype=torch.float32), label
 
     @staticmethod
     def extract_hog(img: torch.Tensor) -> np.ndarray:
-        from skimage.feature import hog
         img_np = img.numpy().reshape(28, 28)
         hog_features = hog(img_np, pixels_per_cell=(4, 4), cells_per_block=(2, 2), feature_vector=True)
         return hog_features

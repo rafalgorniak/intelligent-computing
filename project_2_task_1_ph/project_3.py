@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from torch.utils.data import DataLoader
 from sklearn.datasets import load_iris, load_wine, load_breast_cancer
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
@@ -19,6 +21,8 @@ from custom_dataset import CustomDataset
 from custom_mlp import CustomMLP
 from extraction_type import ExtractionType
 from mnist_custom_dataset import MNISTCustomDataset
+from torchvision import datasets
+from torchvision.transforms import transforms
 
 
 def train_model(model, train_loader, test_loader, loss_function, optimizer, device, num_epochs):
@@ -179,27 +183,61 @@ def display_plots(train_features, train_labels, test_features, test_labels, trai
     plt.title(f"Test Confusion Matrix - {dataset_name} - {extraction_method}")
     plt.show()
 
-    if lda and train_features.shape[1] == 2:
+    if train_features.shape[1] == 2:
         plot_voronoi_diagram(train_features, train_labels, dataset_name, extraction_method, title='Voronoi Diagram - Train')
         plot_voronoi_diagram(test_features, test_labels, dataset_name, extraction_method, title='Voronoi Diagram - Test')
+
+
+def getTSNETrain():
+    mnist_data = datasets.MNIST(root='./data', train=True, transform=transforms.ToTensor(), download=True)
+    train_images = mnist_data.data.numpy().reshape(-1, 28 * 28)
+    tsne = TSNE(n_components=2, random_state=42)
+    tsne_representation = tsne.fit_transform(train_images)
+    return torch.tensor(tsne_representation.astype('float32')), mnist_data.targets
+
+
+def getTSNETest():
+    mnist_data = datasets.MNIST(root='./data', train=False, transform=transforms.ToTensor(), download=True)
+    test_images = mnist_data.data.numpy().reshape(-1, 28 * 28)
+    tsne = TSNE(n_components=2, random_state=42)
+    tsne_representation = tsne.fit_transform(test_images)
+    return torch.tensor(tsne_representation.astype('float32')), mnist_data.targets
 
 
 def load_datasets(extraction_method, batch_size, dataset_name):
     lda = None
 
     if dataset_name == 'MNIST':
+        train_dataset = MNISTCustomDataset(train=True, feature_extraction=ExtractionType.FLATTEN)
+
         if extraction_method == ExtractionType.LDA:
-            train_dataset = MNISTCustomDataset(root='./data', train=True, feature_extraction=ExtractionType.FLATTEN)
             flattened_imgs = [img.numpy() for img, _ in train_dataset]
             labels = [label for _, label in train_dataset]
             lda = LDA(n_components=2)
             lda.fit(flattened_imgs, labels)
 
-            train_dataset = MNISTCustomDataset(root='./data', train=True, feature_extraction=extraction_method, lda=lda)
-            test_dataset = MNISTCustomDataset(root='./data', train=False, feature_extraction=extraction_method, lda=lda)
+            train_dataset = MNISTCustomDataset(train=True, feature_extraction=extraction_method, lda=lda)
+            test_dataset = MNISTCustomDataset(train=False, feature_extraction=extraction_method, lda=lda)
+
+        elif extraction_method == ExtractionType.TSNE:
+            train_data, train_labels = getTSNETrain()
+            test_data, test_labels = getTSNETest()
+
+            train_dataset = torch.utils.data.TensorDataset(train_data, train_labels)
+            test_dataset = torch.utils.data.TensorDataset(test_data, test_labels)
+
+        elif extraction_method == ExtractionType.PCA:
+            flattened_imgs = [img.numpy() for img, _ in train_dataset]
+            labels = [label for _, label in train_dataset]
+            pca = PCA(n_components=2)  # Initialize PCA
+            pca.fit(flattened_imgs, labels)
+
+            train_dataset = MNISTCustomDataset(train=True, feature_extraction=extraction_method, pca=pca)
+            test_dataset = MNISTCustomDataset(train=False, feature_extraction=extraction_method, pca=pca)
+
         else:
-            train_dataset = MNISTCustomDataset(root='./data', train=True, feature_extraction=extraction_method)
-            test_dataset = MNISTCustomDataset(root='./data', train=False, feature_extraction=extraction_method)
+            train_dataset = MNISTCustomDataset(train=True, feature_extraction=extraction_method)
+            test_dataset = MNISTCustomDataset(train=False, feature_extraction=extraction_method)
 
         input_size = train_dataset[0][0].shape[0]
         output_size = 10
@@ -254,8 +292,10 @@ learning_rate = 0.01
 hidden_size = 100
 batch_size = 32
 
-datasets_list = ['MNIST', 'Iris', 'Wine', 'Breast Cancer']
-feature_extraction_methods = [ExtractionType.FLATTEN, ExtractionType.LDA, ExtractionType.HOG]
+#datasets_list = ['MNIST', 'Iris', 'Wine', 'Breast Cancer']
+#feature_extraction_methods = [ExtractionType.FLATTEN, ExtractionType.LDA, ExtractionType.HOG]
+datasets_list = ['MNIST']
+feature_extraction_methods = [ExtractionType.PCA]
 
 epochs_dict = {
     'MNIST': 10,
@@ -269,6 +309,7 @@ for dataset_name in datasets_list:
         print(f'\nDataset: {dataset_name}, Feature Extraction Method: {extraction_method}')
 
         train_loader, test_loader, input_size, output_size, lda = load_datasets(extraction_method, batch_size, dataset_name=dataset_name)
+        print(f'\nNumber of training examples: {len(train_loader)}')
         model = initialize_model(input_size, hidden_size, output_size, device)
         model_filename = f'model_{dataset_name}_{extraction_method}.pth'
 
