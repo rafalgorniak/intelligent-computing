@@ -11,7 +11,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
-from warmUp.warmup import plot_voronoi_diagram,load
+from warmUp.warmup import load
 
 
 def plot_decision_boundary(X, y_true, func, title):

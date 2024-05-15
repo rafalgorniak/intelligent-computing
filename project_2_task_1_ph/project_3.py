@@ -23,6 +23,8 @@ from extraction_type import ExtractionType
 from mnist_custom_dataset import MNISTCustomDataset
 from torchvision import datasets
 from torchvision.transforms import transforms
+from sklearn.svm import SVC
+from sklearn.utils import resample
 
 
 def train_model(model, train_loader, test_loader, loss_function, optimizer, device, num_epochs):
@@ -121,7 +123,11 @@ def evaluate_model(model, train_loader, test_loader, device):
     return train_labels, train_predictions, test_labels, test_predictions, train_features, test_features
 
 
-def plot_voronoi_diagram(X: np.ndarray, y_true_labels: np.ndarray, dataset_name: str, extraction_method: str, title: str = 'Voronoi Diagram') -> None:
+def plot_voronoi_diagram(X: np.ndarray, y_true_labels: np.ndarray, dataset_name: str, extraction_method: str, title: str = 'Voronoi Diagram', num_points: int = 5000) -> None:
+    # Downsample the dataset if it contains more points than specified
+    if len(X) > num_points:
+        X, y_true_labels = resample(X, y_true_labels, n_samples=num_points, random_state=42)
+
     plot_margin = 0.1
     x1_max = X[:, 0].max() + plot_margin
     x1_min = X[:, 0].min() - plot_margin
@@ -168,6 +174,44 @@ def plot_voronoi_diagram(X: np.ndarray, y_true_labels: np.ndarray, dataset_name:
     plt.show()
 
 
+def plot_decision_boundary(X: np.ndarray, y: np.ndarray, dataset_name: str, extraction_method: str, title: str = 'Decision Boundary', num_points: int =5000) -> None:
+
+    if len(X) > num_points:
+        X, y = resample(X, y, n_samples=num_points, random_state=42)
+
+    # Fit SVM classifier
+    clf = SVC(kernel='linear')
+    clf.fit(X, y)
+
+    # Plot decision boundary
+    plot_margin = 0.1
+    x1_max = X[:, 0].max() + plot_margin
+    x1_min = X[:, 0].min() - plot_margin
+    x2_max = X[:, 1].max() + plot_margin
+    x2_min = X[:, 1].min() - plot_margin
+
+    xx, yy = np.meshgrid(np.linspace(x1_min, x1_max, 100), np.linspace(x2_min, x2_max, 100))
+    Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
+
+    Z = Z.reshape(xx.shape)
+    plt.contourf(xx, yy, Z, alpha=0.4)
+
+    # Plot data points
+    group_colors = sns.color_palette("hsv", len(np.unique(y)))
+    for i, label in enumerate(np.unique(y)):
+        idx = np.where(y == label)[0]
+        color = group_colors[i % len(group_colors)]
+        plt.scatter(X[idx, 0], X[idx, 1], color=color, label=str(label))
+
+    plt.xlim([x1_min, x1_max])
+    plt.ylim([x2_min, x2_max])
+    plt.title(f'{title} - {dataset_name} - {extraction_method}')
+    plt.xlabel("X")
+    plt.ylabel("Y")
+    plt.legend(title="Classes")
+    plt.show()
+
+
 def display_plots(train_features, train_labels, test_features, test_labels, train_predictions, test_predictions, dataset_name, extraction_method, lda=None):
     conf_matrix_train = confusion_matrix(train_labels, train_predictions)
     conf_matrix_test = confusion_matrix(test_labels, test_predictions)
@@ -186,6 +230,11 @@ def display_plots(train_features, train_labels, test_features, test_labels, trai
     if train_features.shape[1] == 2:
         plot_voronoi_diagram(train_features, train_labels, dataset_name, extraction_method, title='Voronoi Diagram - Train')
         plot_voronoi_diagram(test_features, test_labels, dataset_name, extraction_method, title='Voronoi Diagram - Test')
+        plot_decision_boundary(train_features, train_labels, dataset_name, extraction_method,
+                             title='Decision Boundary - Train')
+        plot_decision_boundary(test_features, test_labels, dataset_name, extraction_method,
+                             title='Decision Boundary - Test')
+
 
 
 def getTSNETrain():
@@ -293,9 +342,9 @@ hidden_size = 100
 batch_size = 32
 
 #datasets_list = ['MNIST', 'Iris', 'Wine', 'Breast Cancer']
-#feature_extraction_methods = [ExtractionType.FLATTEN, ExtractionType.LDA, ExtractionType.HOG]
+#feature_extraction_methods = [ExtractionType.FLATTEN, ExtractionType.LDA, ExtractionType.HOG, ExtractionType.TSNE, ExtractionType.PCA]
 datasets_list = ['MNIST']
-feature_extraction_methods = [ExtractionType.PCA]
+feature_extraction_methods = [ExtractionType.PCA, ExtractionType.TSNE]
 
 epochs_dict = {
     'MNIST': 10,
