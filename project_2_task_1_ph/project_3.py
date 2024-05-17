@@ -29,9 +29,14 @@ from sklearn.utils import resample
 
 def train_model(model, train_loader, test_loader, loss_function, optimizer, device, num_epochs):
     model.to(device)
+    train_accuracies = []
+    test_accuracies = []
+
     for epoch in range(num_epochs):
         model.train()
         epoch_loss = 0.0
+        correct_train_predictions = 0
+        total_train_samples = 0
 
         for images, labels in train_loader:
             images, labels = images.to(device).float(), labels.to(device)
@@ -43,11 +48,22 @@ def train_model(model, train_loader, test_loader, loss_function, optimizer, devi
             optimizer.step()
 
             epoch_loss += loss.item()
+            _, predicted = torch.max(outputs, 1)
+            total_train_samples += labels.size(0)
+            correct_train_predictions += (predicted == labels).sum().item()
 
         avg_loss = epoch_loss / len(train_loader)
-        print(f'Epoch [{epoch + 1}/{num_epochs}] - Loss: {avg_loss:.4f}')
+        train_accuracy = correct_train_predictions / total_train_samples
+        print(f'Epoch [{epoch + 1}/{num_epochs}] - Loss: {avg_loss:.4f} - Train Accuracy: {train_accuracy:.4f}')
 
-    return evaluate_model(model, train_loader, test_loader, device)
+        train_accuracies.append(train_accuracy)
+
+        _, _, test_accuracy = test_model(model, test_loader, device)
+        test_accuracies.append(test_accuracy / 100)
+
+    # Ensure the original return values are preserved
+    evaluation_results = evaluate_model(model, train_loader, test_loader, device)
+    return train_accuracies, test_accuracies, evaluation_results
 
 
 def test_model(model, dataloader, device):
@@ -72,6 +88,18 @@ def test_model(model, dataloader, device):
     print(f'Test Accuracy: {accuracy:.2f}%')
 
     return all_labels, all_predictions, accuracy
+
+
+def scorePlot(epoch_range, train_accuracies, test_accuracies, x_label='Epoch'):
+    plt.plot(epoch_range, train_accuracies, marker='', label='Train Accuracy')
+    plt.plot(epoch_range, test_accuracies, marker='', label='Test Accuracy')
+
+    plt.xlabel(x_label)
+    plt.ylabel('Accuracy')
+    plt.ylim(0.0, 1.1)
+    plt.legend(loc='lower right')
+
+    plt.show()
 
 
 def initialize_model(input_size, hidden_size, output_size, device):
@@ -368,8 +396,10 @@ for dataset_name in datasets_list:
             loss_function = nn.CrossEntropyLoss()
             optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 
-            train_labels, train_predictions, test_labels, test_predictions, train_features, test_features = train_model(
+            train_accuracies, test_accuracies, train_labels, train_predictions, test_labels, test_predictions, train_features, test_features = train_model(
                 model, train_loader, test_loader, loss_function, optimizer, device, num_epochs)
+
+            scorePlot(range(1, num_epochs + 1), train_accuracies, test_accuracies, 'Epoch')
 
             print(f'Testing model with feature extraction method: {extraction_method}')
             display_plots(train_features, train_labels, test_features, test_labels, train_predictions, test_predictions, dataset_name, extraction_method, lda)
