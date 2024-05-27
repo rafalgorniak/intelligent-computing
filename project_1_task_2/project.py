@@ -119,7 +119,8 @@ def pageOne():
             neurons_value = 0
 
             for neurons in hidden_layer_neurons:
-                mlp = MLPClassifier(random_state=42, hidden_layer_sizes=neurons, activation=activation, max_iter=500, n_iter_no_change=500, tol=0, solver='sgd')
+                mlp = MLPClassifier(random_state=42, hidden_layer_sizes=neurons, activation=activation, max_iter=100,
+                                    n_iter_no_change=100, tol=0, solver='sgd')
                 mlp.fit(points_data, labels_data)
                 actual_score = mlp.score(points_data, labels_data)
 
@@ -129,8 +130,9 @@ def pageOne():
                     score = actual_score
                     neurons_value = neurons
 
-            mlp = MLPClassifier(random_state=42, hidden_layer_sizes=neurons_value, activation=activation, max_iter=500, n_iter_no_change=500, tol=0, solver='sgd')
-            mlp.fit(points_data, labels_data)
+            #mlp = MLPClassifier(random_state=42, hidden_layer_sizes=neurons_value, activation=activation, max_iter=500,
+            #                    n_iter_no_change=500, tol=0, solver='sgd')
+            #mlp.fit(points_data, labels_data)
             plot_decision_boundary(points_data, labels_data, mlp.predict,f'MLP Dec. Bound. for set {index+1}, act. = {activation}, neurons = {neurons_value}, acc. = {"{:.1f}".format(score)}')
 
 
@@ -261,8 +263,8 @@ def pageFour():
 
         # SVM section
         for neurons in mlp_values:
-            mlp = MLPClassifier(random_state=42, hidden_layer_sizes=neurons, activation='relu', max_iter=100,
-                                n_iter_no_change=100, tol=0, solver='sgd')
+            mlp = MLPClassifier(random_state=42, hidden_layer_sizes=neurons, activation='relu', max_iter=500,
+                                n_iter_no_change=500, tol=0, solver='sgd')
             mlp.fit(X_train, labels_train)
 
             predictionsTrain = mlp.predict(X_train)
@@ -531,7 +533,7 @@ def pageEight():
 
 if __name__ == '__main__':
 
-    #pageOne()
+    pageOne()
     #pageTwo()
     #pageThree()
     #pageFour()
