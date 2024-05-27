@@ -369,10 +369,10 @@ learning_rate = 0.01
 hidden_size = 100
 batch_size = 32
 
-#datasets_list = ['MNIST', 'Iris', 'Wine', 'Breast Cancer']
+datasets_list = ['MNIST', 'Iris', 'Wine', 'Breast Cancer']
 #feature_extraction_methods = [ExtractionType.FLATTEN, ExtractionType.LDA, ExtractionType.HOG, ExtractionType.TSNE, ExtractionType.PCA]
-datasets_list = ['MNIST']
-feature_extraction_methods = [ExtractionType.PCA, ExtractionType.TSNE]
+#datasets_list = ['MNIST']
+feature_extraction_methods = [ExtractionType.FLATTEN]
 
 epochs_dict = {
     'MNIST': 10,
@@ -396,8 +396,10 @@ for dataset_name in datasets_list:
             loss_function = nn.CrossEntropyLoss()
             optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 
-            train_accuracies, test_accuracies, train_labels, train_predictions, test_labels, test_predictions, train_features, test_features = train_model(
+            train_accuracies, test_accuracies, evaluation_results = train_model(
                 model, train_loader, test_loader, loss_function, optimizer, device, num_epochs)
+
+            train_labels, train_predictions, test_labels, test_predictions, train_features, test_features = evaluation_results
 
             scorePlot(range(1, num_epochs + 1), train_accuracies, test_accuracies, 'Epoch')
 
