@@ -1,5 +1,5 @@
 from torch.utils.data import DataLoader, Subset
-from torchvision.datasets import CIFAR10, MNIST
+from torchvision.datasets import CIFAR10
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
@@ -9,8 +9,9 @@ from sklearn.neighbors import KNeighborsClassifier
 from torch import optim, nn
 from torchvision.transforms import transforms
 import seaborn as sns
+import statistics
 
-from project_2_task2_rg.models import CIFAR10CNN, MNISTCNN, CIFAR10CNN2, MNISTCNN2
+from project_2_task2_rg.models import CIFAR10CNN, CIFAR10CNN2
 
 subsets = [100, 200, 1000]
 
@@ -172,8 +173,34 @@ def plot_decision_boundary(model, test_loader, dataset_name, extraction_method, 
     plt.show()
 
 
-if __name__ == "__main__":
+def show_cifar10_samples(test_dataset_cifar, title):
+    # Dictionary to store 10 images for each class
+    class_images = {i: [] for i in range(10)}
 
+    # Counter to keep track of the number of images for each class
+    class_counter = {i: 0 for i in range(10)}
+
+    # Iterate through the test dataset to select 10 images for each class
+    for img, label in test_dataset_cifar:
+        if class_counter[label] < 10:
+            class_images[label].append(img)
+            class_counter[label] += 1
+
+        # Check if 10 images have been collected for each class
+        if all(count == 10 for count in class_counter.values()):
+            break
+
+    # Display the selected images
+    fig, axes = plt.subplots(10, 10, figsize=(10, 10))
+    for i in range(10):
+        for j in range(10):
+            axes[i, j].imshow(np.transpose(class_images[i][j], (1, 2, 0)))
+            axes[i, j].axis('off')
+    plt.suptitle(title)  # Set the title for the entire figure
+    plt.show()
+
+
+def first_exp():
     cifar_train_transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.RandomCrop(32, padding=4),
@@ -204,13 +231,12 @@ if __name__ == "__main__":
 
     criterion = nn.CrossEntropyLoss()
 
-
     train_dataset_cifar = CIFAR10(root='./data', train=True, download=False, transform=cifar_train_transform)
     test_dataset_cifar = CIFAR10(root='./data', train=False, download=False, transform=cifar_test_transform)
 
     train_loader = DataLoader(train_dataset_cifar, batch_size=64, shuffle=True, num_workers=2)
     test_loader = DataLoader(test_dataset_cifar, batch_size=64, shuffle=False, num_workers=2)
-    
+
     model = CIFAR10CNN2()
 
     """
@@ -240,3 +266,95 @@ if __name__ == "__main__":
 
     print("Plotting decision boundary...")
     plot_decision_boundary(model, test_loader, "CIFAR10", "Two features")
+
+
+def second_exp():
+    cifar_train_transform_mine = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(32, padding=4),
+        transforms.ColorJitter(brightness=0.5),
+        transforms.RandomRotation(10),
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+    ])
+
+    cifar_train_transform_alternative = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomResizedCrop(32, scale=(0.8, 1.0)),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.RandomRotation(15),
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+    ])
+
+    cifar_test_transform = transforms.Compose([
+        transforms.ToTensor(),
+    ])
+
+    criterion = nn.CrossEntropyLoss()
+    models = [CIFAR10CNN2, CIFAR10CNN]
+    subsets = [100, 200, 1000, 10000]
+    augmentations = [cifar_test_transform, cifar_train_transform_mine, cifar_train_transform_alternative]
+    LOOP_ITER = 5
+
+
+    test_dataset_cifar = CIFAR10(root='./data', train=False, download=False, transform=cifar_test_transform)
+    test_loader = DataLoader(test_dataset_cifar, batch_size=64, shuffle=False, num_workers=2)
+
+    for augment in augmentations:
+        """
+        train_dataset_cifar = CIFAR10(root='./data', train=True, download=False, transform=cifar_test_transform)
+        show_cifar10_samples(train_dataset_cifar, "CIFAR10 training dataset for no augmentation")
+
+        train_dataset_cifar = CIFAR10(root='./data', train=True, download=False, transform=cifar_train_transform_mine)
+        show_cifar10_samples(train_dataset_cifar, "CIFAR10 training dataset for 1st person augmentation")
+
+        train_dataset_cifar = CIFAR10(root='./data', train=True, download=False, transform=cifar_train_transform_alternative)
+        show_cifar10_samples(train_dataset_cifar, "CIFAR10 training dataset for 2st person augmentation")
+        """
+        train_dataset_cifar = CIFAR10(root='./data', train=True, download=False,
+                                      transform=augment)
+
+        for subset in subsets:
+            #if(subset == None):
+                #train_loader = DataLoader(train_dataset_cifar, batch_size=64, shuffle=True, num_workers=2)
+            #else:
+            train_loader = DataLoader(create_subset(train_dataset_cifar, subset), batch_size=64, shuffle=True, num_workers=2)
+
+            for model_cls  in models:
+
+                accuracy = []
+
+                for i in range(LOOP_ITER):
+                    current_model = model_cls()
+                    optimizer = optim.Adam(current_model.parameters(), lr=0.001)
+
+                    print("Training...")
+                    train_accuracy, test_accuracy, best_model = train(current_model, criterion, optimizer, train_loader,
+                                                                      test_loader, epochs=5)
+                    accuracy.append(test_accuracy[-1])
+
+                    #if(model==CIFAR10CNN2()):
+                        #print("Plotting decision boundary...")
+                        #plot_decision_boundary(model, test_loader, "CIFAR10CNN2", "Two features")
+
+                # Calculate the average value (mean)
+                average_accuracy = statistics.mean(accuracy)
+
+                # Calculate the standard deviation
+                standard_deviation = statistics.stdev(accuracy)
+
+                model_name = model_cls.__name__
+                augmentation_name = augment.transforms[0].__class__.__name__ if augment == cifar_test_transform else (
+                    "1st user augmentation" if augment == cifar_train_transform_mine else "2nd user augmentation")
+
+                print(f"Average Accuracy for {model_name}, with {augmentation_name}, for {subset} images:",
+                      average_accuracy)
+                print(f"Standard Deviation for {model_name}, with {augmentation_name}, for {subset} images:",
+                      standard_deviation)
+
+
+if __name__ == "__main__":
+
+    #first_exp()
+    second_exp()
