@@ -1,19 +1,37 @@
 import torch.nn as nn
 
 
+LEARN_RATE = 0.001
+NUM_EPOCHS = 5
+BATCH_SIZE = 64
+
+
+class DatasetName:
+    MNIST = "MNIST"
+    CIFAR10 = "CIFAR10"
+
+
 class CIFAR10CNN(nn.Module):
     def __init__(self):
         super(CIFAR10CNN, self).__init__()
         self.feature_extractor = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Dropout2d(0.25),
+
             nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Dropout2d(0.25),
+
             nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Dropout2d(0.25),
         )
         self.classifier = nn.Sequential(
             nn.Flatten(),
@@ -31,31 +49,46 @@ class CIFAR10CNN(nn.Module):
 class CIFAR10CNN2(nn.Module):
     def __init__(self):
         super(CIFAR10CNN2, self).__init__()
-
-        # Feature extraction block
         self.feature_extractor = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Dropout2d(0.25),
+
             nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Dropout2d(0.25),
+
             nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Dropout2d(0.25),
         )
 
-        # Classification block
-        self.classifier = nn.Sequential(
+        self.feature_reduction = nn.Sequential(
             nn.Flatten(),
             nn.Linear(128 * 4 * 4, 256),
             nn.ReLU(),
-            nn.Linear(256, 2)
+            nn.Linear(256, 2),
+        )
+
+        self.classifier = nn.Sequential(
+            nn.Linear(2, 10)
         )
 
     def forward(self, x):
         x = self.feature_extractor(x)
+        x = self.feature_reduction(x)
         x = self.classifier(x)
+        return x
+
+    def extract_features(self, x):
+        x = self.feature_extractor(x)
+        x = self.feature_reduction(x)
         return x
 
 
@@ -124,15 +157,25 @@ class MNISTCNN2(nn.Module):
         )
 
         # Classification block
-        self.classifier = nn.Sequential(
+        self.feature_reduction = nn.Sequential(
             nn.Flatten(),
             nn.Linear(2 * 3 * 3, 256),
             nn.ReLU(),
-            nn.Linear(256, 10)
+            nn.Linear(256, 2)
+        )
+
+        self.classifier = nn.Sequential(
+            nn.Linear(2, 10)
         )
 
     def forward(self, x):
         x = self.feature_extractor(x)
+        x = self.feature_reduction(x)
         x = self.classifier(x)
+        return x
+
+    def extract_features(self, x):
+        x = self.feature_extractor(x)
+        x = self.feature_reduction(x)
         return x
 
