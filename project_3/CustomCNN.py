@@ -1,16 +1,6 @@
 import torch.nn as nn
 
 
-LEARN_RATE = 0.001
-NUM_EPOCHS = 5
-BATCH_SIZE = 64
-
-
-class DatasetName:
-    MNIST = "MNIST"
-    CIFAR10 = "CIFAR10"
-
-
 class CIFAR10CNN(nn.Module):
     def __init__(self):
         super(CIFAR10CNN, self).__init__()
